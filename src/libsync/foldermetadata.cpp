@@ -7,9 +7,11 @@
 #include "encryptedfoldermetadatahandler.h"
 #include "foldermetadata.h"
 #include "clientsideencryption.h"
-#include "clientsideencryptionjobs.h"
-#include <common/checksums.h>
+#include "common/checksums.h"
+#include "owncloudpropagator.h"
+
 #include <QDir>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QSslCertificate>
@@ -74,6 +76,41 @@ bool FolderMetadata::isOriginalFilenameValid(const QString &originalFilename)
 bool FolderMetadata::EncryptedFile::isDirectory() const
 {
     return mimetype.isEmpty() || mimetype == QByteArrayLiteral("inode/directory") || mimetype == QByteArrayLiteral("httpd/unix-directory");
+}
+
+void FolderMetadata::EncryptedFile::initializeForNewItem(const QString &fileName, const QFileInfo &info)
+{
+    encryptionKey = EncryptionHelper::generateRandom(16);
+    encryptedFilename = EncryptionHelper::generateRandomFilename();
+    originalFilename = fileName;
+
+    QMimeDatabase mdb;
+    mimetype = mdb.mimeTypeForFile(info).name().toLocal8Bit();
+
+    // Other clients expect "httpd/unix-directory" instead of "inode/directory"
+    // Doesn't matter much for us since we don't do much about that mimetype anyway
+    if (mimetype == QByteArrayLiteral("inode/directory")) {
+        mimetype = QByteArrayLiteral("httpd/unix-directory");
+    }
+}
+
+void FolderMetadata::EncryptedFile::initializeForRecovery(const QString &fileName,
+                                                          const QString &encryptedFileName,
+                                                          const QByteArray &existingEncryptionKey,
+                                                          const QFileInfo &info)
+{
+    encryptionKey = existingEncryptionKey;
+    encryptedFilename = encryptedFileName;
+    originalFilename = fileName;
+
+    QMimeDatabase mdb;
+    mimetype = mdb.mimeTypeForFile(info).name().toLocal8Bit();
+
+           // Other clients expect "httpd/unix-directory" instead of "inode/directory"
+           // Doesn't matter much for us since we don't do much about that mimetype anyway
+    if (mimetype == QByteArrayLiteral("inode/directory")) {
+        mimetype = QByteArrayLiteral("httpd/unix-directory");
+    }
 }
 
 FolderMetadata::FolderMetadata(AccountPtr account, const QString &remoteFolderRoot, FolderType folderType) :
@@ -435,11 +472,14 @@ void FolderMetadata::setupExistingMetadataLegacy(const QByteArray &metadata)
     _isMetadataValid = true;
 }
 
-void FolderMetadata::initMetadataFromClientState()
+void FolderMetadata::initMetadataFromClientState(const QList<DatabaseEncryptedFile> &childItems,
+                                                 OwncloudPropagator *propagator)
 {
-    const auto oldFiles = _files;
-    for (const auto &oneItem : oldFiles) {
-        const auto result = addEncryptedFile(oneItem);
+    for (const auto &oneItem : childItems) {
+        auto newEncryptedItem = EncryptedFile{};
+        QFileInfo info(propagator->fullLocalPath(oneItem.originalFilename));
+        newEncryptedItem.initializeForRecovery(oneItem.originalFilename, oneItem.encryptedFilename, oneItem.encryptionKey, info);
+        const auto result = addEncryptedFile(newEncryptedItem);
         if (!result) {
             qCWarning(lcCseMetadata()) << "Could not add encrypted file" << oneItem.originalFilename;
         }
@@ -758,7 +798,7 @@ QByteArray FolderMetadata::encryptedMetadata()
 
     QJsonArray folderUsers;
     if (_isRootEncryptedFolder) {
-        for (const auto &folderUser : _folderUsers) {
+        for (const auto &folderUser : std::as_const(_folderUsers)) {
             const QJsonObject folderUserJson{{usersUserIdKey, folderUser.userId},
                                              {usersCertificateKey, QJsonValue::fromVariant(folderUser.certificatePem)},
                                              {usersEncryptedMetadataKey, QJsonValue::fromVariant(folderUser.encryptedMetadataKey)}};
@@ -950,9 +990,10 @@ void FolderMetadata::updateSelfCertificate()
     }
 }
 
-void FolderMetadata::repair()
+void FolderMetadata::repair(const QList<FolderMetadata::DatabaseEncryptedFile> &childItems,
+                            OwncloudPropagator *propagator)
 {
-    initMetadataFromClientState();
+    initMetadataFromClientState(childItems, propagator);
 }
 
 quint64 FolderMetadata::newCounter() const

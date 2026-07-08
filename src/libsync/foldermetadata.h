@@ -5,7 +5,6 @@
  */
 
 #include "accountfwd.h"
-#include "encryptedfoldermetadatahandler.h"
 #include "csync.h"
 #include "rootencryptedfolderinfo.h"
 #include <QByteArray>
@@ -17,13 +16,20 @@
 #include <QString>
 #include <QVector>
 
+class QFileInfo;
 class QSslCertificate;
 class QJsonDocument;
 class TestClientSideEncryptionV2;
 class TestSecureFileDrop;
+
 namespace OCC
 {
- // Handles parsing and altering the metadata, encryption and decryption. Setup of the instance is always asynchronouse and emits void setupComplete()
+
+class EncryptedFolderMetadataHandler;
+class CertificateInformation;
+class OwncloudPropagator;
+
+// Handles parsing and altering the metadata, encryption and decryption. Setup of the instance is always asynchronouse and emits void setupComplete()
 class OWNCLOUDSYNC_EXPORT FolderMetadata : public QObject
 {
     friend class ::TestClientSideEncryptionV2;
@@ -68,6 +74,16 @@ public:
         QString encryptedFilename;
         QString originalFilename;
         bool isDirectory() const;
+
+        void initializeForNewItem(const QString &fileName, const QFileInfo &info);
+
+        void initializeForRecovery(const QString &fileName, const QString &encryptedFileName, const QByteArray &existingEncryptionKey, const QFileInfo &info);
+    };
+
+    struct DatabaseEncryptedFile {
+        QByteArray encryptionKey;
+        QString encryptedFilename;
+        QString originalFilename;
     };
 
     enum class FolderType {
@@ -146,7 +162,8 @@ public:
 
     static MetadataVersion setupVersionFromExistingMetadata(const QByteArray &metadata);
 
-    void repair();
+    void repair(const QList<DatabaseEncryptedFile> &childItems,
+                OwncloudPropagator *propagator);
 
 public slots:
     [[nodiscard]] bool addEncryptedFile(const OCC::FolderMetadata::EncryptedFile &f);
@@ -195,7 +212,8 @@ private slots:
     void setupExistingMetadata(const QByteArray &metadata);
     void setupExistingMetadataLegacy(const QByteArray &metadata);
 
-    void initMetadataFromClientState();
+    void initMetadataFromClientState(const QList<OCC::FolderMetadata::DatabaseEncryptedFile> &childItems,
+                                     OwncloudPropagator *propagator);
 
     void startFetchRootE2eeFolderMetadata(const QString &path);
     void slotRootE2eeFolderMetadataReceived(int statusCode, const QString &message);
