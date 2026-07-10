@@ -7,13 +7,12 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-import com.nextcloud.desktopclient
 import Style
 
 TextField {
     id: replyMessageTextField
 
-    property color accentColor: UserModel.currentUser ? UserModel.currentUser.accentColor : palette.highlight
+    property color accentColor: palette.highlight
 
     signal sendReply(string reply)
     function sendReplyMessage() { if (text !== "") sendReply(text) }

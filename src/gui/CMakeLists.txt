@@ -210,12 +210,12 @@ set(client_SRCS
     filedetails/sortedsharemodel.cpp
     tray/svgimageprovider.h
     tray/svgimageprovider.cpp
-    tray/syncstatussummary.h
-    tray/syncstatussummary.cpp
-    tray/activitydata.h
-    tray/activitydata.cpp
-    tray/activitylistmodel.h
-    tray/activitylistmodel.cpp
+    activity/syncstatussummary.h
+    activity/syncstatussummary.cpp
+    activity/activitydata.h
+    activity/activitydata.cpp
+    activity/activitylistmodel.h
+    activity/activitylistmodel.cpp
     search/unifiedsearchresult.h
     tray/asyncimageresponse.cpp
     search/unifiedsearchresult.cpp
@@ -226,12 +226,12 @@ set(client_SRCS
     search/unifiedsearchresultslistmodel.cpp
     tray/usermodel.h
     tray/usermodel.cpp
-    tray/notificationhandler.h
-    tray/notificationhandler.cpp
-    tray/sortedactivitylistmodel.h
-    tray/sortedactivitylistmodel.cpp
+    activity/notificationhandler.h
+    activity/notificationhandler.cpp
+    activity/sortedactivitylistmodel.h
+    activity/sortedactivitylistmodel.cpp
     creds/credentialsfactory.h
-    tray/talkreply.cpp
+    activity/talkreply.cpp
     creds/credentialsfactory.cpp
     creds/httpcredentialsgui.h
     creds/httpcredentialsgui.cpp
