@@ -4,6 +4,14 @@
 ~$*
 .~lock.*
 ~*.tmp
+
+# Adobe lock files: InDesign/InCopy (.idlk) and Premiere Pro (.prlock)
+# lock files. Unlike Office/LibreOffice lock files they do not encode the
+# guarded document's extension, but excluding them by extension is safe as
+# no legitimate user document uses it.
+*.idlk
+*.prlock
+
 ]*.~*
 ]Icon\r*
 ].DS_Store
