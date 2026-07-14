@@ -18,13 +18,15 @@ NextcloudFileProviderKit is a Swift package designed to simplify the development
 
 ### Lock File Support
 
-Some applications like Microsoft Office and LibreOffice create hidden lock files in the same directory a file opened by them is located in.
-They usually equal the name of the opened file with prefixes like `~$` or suffixes like `#`.
+Some applications like Microsoft Office, LibreOffice and Adobe create hidden lock files in the same directory a file opened by them is located in.
+Office and LibreOffice lock files usually equal the name of the opened file with prefixes like `~$` or suffixes like `#`.
+Adobe applications (InDesign, InCopy, Premiere Pro) use dedicated lock file extensions (`.idlk`, `.prlock`) that carry only the document's base name — not its extension — so the guarded document is resolved by matching a sibling file.
 These are recognized by the file provider extension and not synchronized to the server.
 However, the capabilities of the `files_lock` server app are used to lock the file for editing remotely on the server.
 
 - ``isLockFileName(_:)``
 - ``originalFileName(fromLockFileName:dbManager:)``
+- ``lockFileTargetName(forLockFileName:parentServerUrl:dbManager:)``
 
 ### Logging
 
