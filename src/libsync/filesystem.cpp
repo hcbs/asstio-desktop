@@ -18,7 +18,10 @@
 #include <QCoreApplication>
 
 #include <array>
+#include <map>
+#include <ranges>
 #include <string_view>
+#include <vector>
 
 #ifdef Q_OS_WIN
 #include <securitybaseapi.h>
@@ -30,6 +33,16 @@ namespace
 {
 constexpr std::array<const char *, 2> lockFilePatterns = {{".~lock.", "~$"}};
 constexpr std::array<std::string_view, 8> officeFileExtensions = {"doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "odp"};
+
+// Unlike Office (`~$…`) and LibreOffice (`.~lock.…#`) lock files, Adobe lock file
+// names do not encode the guarded document's own extension, only its base name.
+// The guarded document has to be located among the lock file's siblings.
+// - `idlk`: InDesign documents (`indd`) and InCopy stories (`icml`).
+// - `prlock`: Premiere Pro projects (`prproj`).
+static const std::map<std::string_view, std::vector<std::string_view>> adobeLockFileDocumentExtensions = {
+    {"idlk", {"indd", "icml"}},
+    {"prlock", {"prproj"}},
+};
 // iterates through the dirPath to find the matching fileName
 QString findMatchingUnlockedFileInDir(const QString &dirPath, const QString &lockFileName)
 {
@@ -83,6 +96,15 @@ bool FileSystem::isMatchingOfficeFileExtension(const QString &path)
     const auto pathSplit = path.split(QLatin1Char('.'));
     const auto extension = pathSplit.size() > 1 ? pathSplit.last().toStdString() : std::string{};
     return std::find(std::cbegin(officeFileExtensions), std::cend(officeFileExtensions), extension) != std::cend(officeFileExtensions);
+}
+
+bool FileSystem::isMatchingAdobeDocumentExtension(const QString &path)
+{
+    const auto pathSplit = path.split(QLatin1Char('.'));
+    const auto extension = pathSplit.size() > 1 ? pathSplit.last().toLower().toStdString() : std::string{};
+    return std::ranges::any_of(adobeLockFileDocumentExtensions, [&extension](const auto &entry) {
+        return std::ranges::any_of(entry.second, [&extension](const auto &documentExtension) { return documentExtension == extension; });
+    });
 }
 
 FileSystem::FileLockingInfo FileSystem::lockFileTargetFilePath(const QString &lockFilePath, const QString &lockFileNamePattern)
