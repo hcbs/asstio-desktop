@@ -27,4 +27,19 @@ artwork here is invented — every entry cites its exact source.
 
 - **No dedicated wordmark SVG/PNG asset exists anywhere in `asstio-order-web`.** Searched `public/`, `src/assets` (does not exist), all `*.svg` files repo-wide (excluding `node_modules`/`dist`), and all logo/wordmark references in `.ts`/`.html` files.
 - The app's own header (`sidebar-nav.html:4-11`) composes its "wordmark" live from the square icon mark (above) plus two `<span>` elements of styled text (`{{ companyName() }}` + `Order`) — it is not a static image asset, so it cannot be extracted as one.
-- **Decision (per Task 2 brief's fallback guidance):** since no separate wordmark image exists to use for the wizard logo, `branding/asstio-logo.svg` (the square brand-purple mark) is reused as-is for both the app icon *and* the wizard logo in Task 3. This is the inverse of the brief's anticipated fallback case (brief anticipated "wordmark exists, no square mark → derive a square mark"; here the actual situation is "square mark exists, no wordmark → reuse the square mark for both slots"). No letter-mark derivation was needed since a square mark already exists natively.
+- **Original decision (superseded, see correction below):** since no separate wordmark image exists to use for the wizard logo, Task 2 originally planned to reuse `branding/asstio-logo.svg` (the square brand-purple mark) as-is for both the app icon *and* the wizard logo.
+
+### Correction (Task 3 review)
+
+The wizard logo renders directly on top of the wizard header background, which
+defaults to `NEXTCLOUD_BACKGROUND_COLOR` = `#6D3EFF` (`APPLICATION_WIZARD_HEADER_BACKGROUND_COLOR`
+in `NEXTCLOUD.cmake`). A brand-purple-filled mark on a brand-purple header would be
+invisible. So the wizard logo uses a **white** variant of the mark instead:
+
+- **`branding/asstio-logo-white.svg`** (staged in this repo)
+  - Source: `asstio-order-web/projects/asstio-order-web/public/icons/asstio-icon-white.svg`
+    — same icon-mark silhouette as `asstio-icon-black.svg`/`asstio-icon.svg` (slightly
+    different path data, `viewBox="0 0 200 200"`, `fill="#ffffff"`), copied byte-for-byte.
+  - Used only for `theme/colored/wizard_logo.svg`/`.png`/`@2x.png` (Task 3) — the
+    App icon (`theme/colored/Asstio-icon.svg` + PNGs) still uses the brand-purple
+    `branding/asstio-logo.svg` mark, unchanged from the original Task 2 decision.

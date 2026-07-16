@@ -10,29 +10,24 @@ if(NEXTCLOUD_DEV)
     set( APPLICATION_EXECUTABLE "nextclouddev" )
     set( APPLICATION_ICON_NAME  "Nextcloud" )
 else()
-    set( APPLICATION_NAME       "Nextcloud" )
-    set( APPLICATION_SHORTNAME  "Nextcloud" )
-    set( APPLICATION_EXECUTABLE "nextcloud" )
-    set( APPLICATION_ICON_NAME  "${APPLICATION_SHORTNAME}" )
+    set( APPLICATION_NAME       "Asstio" )
+    set( APPLICATION_SHORTNAME  "Asstio" )
+    set( APPLICATION_EXECUTABLE "asstio" )
 endif()
 
 set( APPLICATION_CONFIG_NAME "${APPLICATION_EXECUTABLE}" )
-set( APPLICATION_DOMAIN     "nextcloud.com" )
-set( APPLICATION_VENDOR     "Nextcloud GmbH" )
-set( APPLICATION_UPDATE_URL "https://updates.nextcloud.org/client/" CACHE STRING "URL for updater" )
+set( APPLICATION_DOMAIN     "asstio.com" )
+set( APPLICATION_VENDOR     "Asstio" )
+set( APPLICATION_UPDATE_URL "" CACHE STRING "URL for updater" )
 set( APPLICATION_HELP_URL   "" CACHE STRING "URL for the help menu" )
-
-if(APPLE AND APPLICATION_NAME STREQUAL "Nextcloud" AND EXISTS "${CMAKE_SOURCE_DIR}/theme/colored/Nextcloud-macOS-icon.svg")
-    set( APPLICATION_ICON_NAME "Nextcloud-macOS" )
-    message("Using macOS-specific application icon: ${APPLICATION_ICON_NAME}")
-endif()
+set( APPLICATION_ICON_NAME  "Asstio" )
 
 set( APPLICATION_ICON_SET   "SVG" )
-set( APPLICATION_SERVER_URL "" CACHE STRING "URL for the server to use. If entered, the UI field will be pre-filled with it" )
+set( APPLICATION_SERVER_URL "https://files.asstio.com" CACHE STRING "URL for the server to use. If entered, the UI field will be pre-filled with it" )
 set( APPLICATION_SERVER_URL_ENFORCE ON ) # If set and APPLICATION_SERVER_URL is defined, the server can only connect to the pre-defined URL
-set( APPLICATION_REV_DOMAIN "com.nextcloud.desktopclient" )
+set( APPLICATION_REV_DOMAIN "com.asstio.desktopclient" )
 set( DEVELOPMENT_TEAM "NKUJUXUJ3B" CACHE STRING "Apple Development Team ID" )
-set( APPLICATION_VIRTUALFILE_SUFFIX "nextcloud" CACHE STRING "Virtual file suffix (not including the .)")
+set( APPLICATION_VIRTUALFILE_SUFFIX "asstio" CACHE STRING "Virtual file suffix (not including the .)")
 set( APPLICATION_OCSP_STAPLING_ENABLED OFF )
 set( APPLICATION_FORBID_BAD_SSL OFF )
 
@@ -48,7 +43,7 @@ set( MAC_INSTALLER_BACKGROUND_FILE "${CMAKE_SOURCE_DIR}/admin/osx/installer-back
 # set( APPLICATION_LICENSE    "${OEM_THEME_DIR}/license.txt )
 
 ## Updater options
-option( BUILD_UPDATER "Build updater" ON )
+option( BUILD_UPDATER "Build updater" OFF )
 
 option( WITH_PROVIDERS "Build with providers list" ON )
 
@@ -62,7 +57,7 @@ option( DO_NOT_USE_PROXY "Do not use system wide proxy, instead always do a dire
 option( WIN_DISABLE_USERNAME_PREFILL "Do not prefill the Windows user name when creating a new account" OFF )
 
 ## Theming options
-set(NEXTCLOUD_BACKGROUND_COLOR "#0082c9" CACHE STRING "Default Nextcloud background color")
+set(NEXTCLOUD_BACKGROUND_COLOR "#6D3EFF" CACHE STRING "Default Nextcloud background color")
 set( APPLICATION_WIZARD_HEADER_BACKGROUND_COLOR ${NEXTCLOUD_BACKGROUND_COLOR} CACHE STRING "Hex color of the wizard header background")
 set( APPLICATION_WIZARD_HEADER_TITLE_COLOR "#ffffff" CACHE STRING "Hex color of the text in the wizard header")
 option( APPLICATION_WIZARD_USE_CUSTOM_LOGO "Use the logo from ':/client/theme/colored/wizard_logo.(png|svg)' else the default application icon is used" ON )
@@ -72,17 +67,17 @@ option( APPLICATION_WIZARD_USE_CUSTOM_LOGO "Use the logo from ':/client/theme/co
 #
 if(WIN32)
     # Context Menu
-    set( WIN_SHELLEXT_CONTEXT_MENU_GUID      "{BC6988AB-ACE2-4B81-84DC-DC34F9B24401}" )
+    set( WIN_SHELLEXT_CONTEXT_MENU_GUID      "{ECB26383-C25E-4A01-8BB4-F42C2F43FC86}" )
 
     # Overlays
-    set( WIN_SHELLEXT_OVERLAY_GUID_ERROR     "{E0342B74-7593-4C70-9D61-22F294AAFE05}" )
-    set( WIN_SHELLEXT_OVERLAY_GUID_OK        "{E1094E94-BE93-4EA2-9639-8475C68F3886}" )
-    set( WIN_SHELLEXT_OVERLAY_GUID_OK_SHARED "{E243AD85-F71B-496B-B17E-B8091CBE93D2}" )
-    set( WIN_SHELLEXT_OVERLAY_GUID_SYNC      "{E3D6DB20-1D83-4829-B5C9-941B31C0C35A}" )
-    set( WIN_SHELLEXT_OVERLAY_GUID_WARNING   "{E4977F33-F93A-4A0A-9D3C-83DEA0EE8483}" )
+    set( WIN_SHELLEXT_OVERLAY_GUID_ERROR     "{00E830A3-7307-42FE-9FF3-B2C75DB61D3A}" )
+    set( WIN_SHELLEXT_OVERLAY_GUID_OK        "{144968E3-B585-4D47-90EA-75E02A96389A}" )
+    set( WIN_SHELLEXT_OVERLAY_GUID_OK_SHARED "{393F4E7A-EC50-4D11-9FE1-149250E67107}" )
+    set( WIN_SHELLEXT_OVERLAY_GUID_SYNC      "{F5BCD8DD-2FC6-42E8-8DD8-1CEB2608EDF2}" )
+    set( WIN_SHELLEXT_OVERLAY_GUID_WARNING   "{D64AE7B1-4714-4724-9453-A3473AB62862}" )
 
     # MSI Upgrade Code (without brackets)
-    set( WIN_MSI_UPGRADE_CODE                "FD2FCCA9-BB8F-4485-8F70-A0621B84A7F4" )
+    set( WIN_MSI_UPGRADE_CODE                "48CF2D8D-3178-4699-9EED-13CC54781F12" )
 
     # Windows build options
     option( BUILD_WIN_MSI "Build MSI scripts and helper DLL" OFF )
