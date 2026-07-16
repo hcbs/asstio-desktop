@@ -115,6 +115,36 @@ jobs:
 
           craft --src-dir "${{ github.workspace }}" nextcloud-client
 
+      - name: Patch NSIS blueprint (fix upstream bug + brand installer)
+        shell: pwsh
+        run: |
+          # The stable-33.0 desktop-client-blueprints' createPackage() calls
+          # os.path.join without importing os -> NameError at --package time.
+          # Upstream's own Windows workflow never runs --package, so the bug is
+          # unfixed on that branch. It also hardcodes the installer appname /
+          # applicationExecutable / company to Nextcloud values. We can't edit
+          # the upstream blueprint repo, so patch the CI-fetched copy here.
+          $bp = "${{ github.workspace }}\${{ env.CRAFT_TARGET }}\etc\blueprints\locations\desktop-client-blueprints\nextcloud-client\nextcloud-client.py"
+          if (-not (Test-Path $bp)) {
+            Write-Error "Blueprint not found: $bp"
+            exit 1
+          }
+          $c = Get-Content -Raw $bp
+
+          # 1) Fix the missing `import os`
+          if ($c -notmatch '(?m)^\s*import os\s*$') {
+            $c = $c -replace '(?m)^(import info\s*)$', "import os`r`n`$1"
+          }
+
+          # 2) Brand the installer to match our build (APPLICATION_EXECUTABLE=asstio)
+          $c = $c -replace 'self\.defines\["appname"\]\s*=\s*"nextcloud"', 'self.defines["appname"] = "asstio"'
+          $c = $c -replace 'self\.applicationExecutable\s*=\s*"nextcloud"', 'self.applicationExecutable = "asstio"'
+          $c = $c -replace 'self\.defines\["company"\]\s*=\s*"Nextcloud GmbH"', 'self.defines["company"] = "Asstio"'
+
+          Set-Content -NoNewline -Path $bp -Value $c
+          Write-Host "Patched blueprint lines:"
+          Get-Content $bp | Select-String -Pattern 'import os|appname|applicationExecutable|company' | ForEach-Object { $_.Line }
+
       - name: Craft package (NSIS)
         shell: pwsh
         run: |
@@ -149,8 +179,11 @@ jobs:
                  Select-Object -First 1
 
           if (-not $exe) {
-            Write-Host "No Asstio installer >50MB found; falling back to name match without size filter" -ForegroundColor Yellow
-            $exe = $candidates | Where-Object { $_.Name -match '(?i)asstio.*(setup|install)' } | Select-Object -First 1
+            # Defensive fallback: if the blueprint rename didn't take, the NSIS
+            # output may still carry a nextcloud name. Keep the >50MB guard so
+            # we never grab an unrelated helper .exe.
+            Write-Host "No Asstio-named installer >50MB found; trying asstio|nextcloud name match" -ForegroundColor Yellow
+            $exe = $candidates | Where-Object { $_.Name -match '(?i)(asstio|nextcloud)' -and $_.Length -gt 50MB } | Select-Object -First 1
           }
 
           if (-not $exe) {
