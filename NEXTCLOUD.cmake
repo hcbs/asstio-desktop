@@ -18,8 +18,13 @@ endif()
 set( APPLICATION_CONFIG_NAME "${APPLICATION_EXECUTABLE}" )
 set( APPLICATION_DOMAIN     "asstio.com" )
 set( APPLICATION_VENDOR     "Asstio" )
-set( APPLICATION_UPDATE_URL "" CACHE STRING "URL for updater" )
-set( APPLICATION_HELP_URL   "" CACHE STRING "URL for the help menu" )
+# Non-empty values required: config.h.in uses #cmakedefine, so an empty string
+# leaves the macro undefined and theme.cpp consumes APPLICATION_UPDATE_URL
+# unconditionally (compile error). Updater is compiled out in M1 (BUILD_UPDATER
+# OFF); this is the planned M2 feed URL. HELP_URL is #ifdef-guarded but its
+# fallback is the Nextcloud docs URL, so set it to avoid a branding leak.
+set( APPLICATION_UPDATE_URL "https://hcbs.github.io/asstio-desktop/updater/" CACHE STRING "URL for updater" )
+set( APPLICATION_HELP_URL   "https://asstio.com" CACHE STRING "URL for the help menu" )
 set( APPLICATION_ICON_NAME  "Asstio" )
 
 set( APPLICATION_ICON_SET   "SVG" )
