@@ -145,6 +145,21 @@ jobs:
           Write-Host "Patched blueprint lines:"
           Get-Content $bp | Select-String -Pattern 'import os|appname|applicationExecutable|company' | ForEach-Object { $_.Line }
 
+          # 3) The blueprint's blacklist.txt strips every bin/*.exe whose name
+          #    isn't nextcloud/nextcloudcmd/QtWebEngineProcess. Our executable
+          #    is asstio.exe (APPLICATION_EXECUTABLE=asstio), so without this
+          #    the installer ships all the DLLs but no launchable app.
+          $bl = "${{ github.workspace }}\${{ env.CRAFT_TARGET }}\etc\blueprints\locations\desktop-client-blueprints\nextcloud-client\blacklist.txt"
+          if (-not (Test-Path $bl)) {
+            Write-Error "Blacklist not found: $bl"
+            exit 1
+          }
+          $b = Get-Content -Raw $bl
+          $b = $b -replace 'nextcloud\|nextcloudcmd\|QtWebEngineProcess', 'asstio|asstiocmd|QtWebEngineProcess'
+          Set-Content -NoNewline -Path $bl -Value $b
+          Write-Host "Patched blacklist executable whitelist:"
+          Get-Content $bl | Select-String -Pattern 'QtWebEngineProcess' | ForEach-Object { $_.Line }
+
       - name: Craft package (NSIS)
         shell: pwsh
         run: |

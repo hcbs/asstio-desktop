@@ -75,3 +75,30 @@ upstream file with:
   at a static `Nextcloud-w10starttile.png` that the install glob does not
   actually ship; using the generated names makes the tile images resolve.
 - `BackgroundColor="#6D3EFF"` (Asstio brand purple) for the Start-menu tile.
+
+## Task 5 follow-up: Windows NSIS packaging (blueprint patched in CI)
+
+`craft --package` on Windows relies on the upstream `stable-33.0`
+`desktop-client-blueprints/nextcloud-client` blueprint, which has two problems
+that upstream never hits (their own Windows workflow only compiles+tests, never
+`--package`). We can't edit the upstream blueprint repo, so `asstio-build-windows.yml`
+patches the CI-fetched copy in a dedicated step (contained in `.github/workflows/`,
+so patch discipline holds):
+
+- `nextcloud-client.py:92` calls `os.path.join` without `import os` → NameError
+  at package time. Fix: insert `import os`.
+- The same file hardcodes the installer `appname`/`applicationExecutable`/
+  `company` to Nextcloud values. Fix: rewrite to `asstio`/`asstio`/`Asstio`
+  (applicationExecutable MUST match `APPLICATION_EXECUTABLE=asstio`).
+- `blacklist.txt` strips every `bin/*.exe` except names matching
+  `nextcloud|nextcloudcmd|QtWebEngineProcess`. Our binary is `asstio.exe`, so
+  the main GUI executable (and `asstiocmd.exe`) were silently stripped from the
+  installer — it shipped every DLL but nothing to launch. This was invisible in
+  a "green" 139 MB artifact; only decompressing the NSIS payload (7z) exposed
+  it. Fix: rewrite the whitelist to `asstio|asstiocmd|QtWebEngineProcess`.
+
+Note: the NSIS output filename is derived from the craft package name
+(`nextcloud-client-...-x86_64.exe`), not `appname`, so the installer file keeps
+a nextcloud name for M1 (acceptable per plan; internals are fully Asstio). The
+collect step's asstio-name+>50MB match therefore falls through to the
+asstio|nextcloud+>50MB fallback.
