@@ -54,3 +54,24 @@ Grepped `APPLICATION_ICON_NAME` usage across `src/gui/CMakeLists.txt` and
 gaps found. The remaining consumers (`VISUAL_ELEMENTS` install glob,
 `MACOSX_BUNDLE_ICON_FILE`, the primary `Asstio-icon.svg`/PNGs, state icons)
 were already covered by Task 3 or don't depend on new filenames.
+
+## Task 5 follow-up: Windows VisualElements tile manifest added
+
+The Task 3 sweep grepped only `APPLICATION_ICON_NAME`, but the Windows tile
+manifest filename derives from `APPLICATION_EXECUTABLE` ("asstio"):
+`src/gui/CMakeLists.txt:589` installs
+`theme/${APPLICATION_EXECUTABLE}.VisualElementsManifest.xml`. Upstream ships
+`theme/nextcloud.VisualElementsManifest.xml`, so the Windows `cmake_install`
+step hard-failed (`file INSTALL cannot find "theme/asstio.VisualElementsManifest.xml"`).
+macOS never references this file, so Task 4 didn't surface it.
+
+Added `theme/asstio.VisualElementsManifest.xml` (+ `.license`), copied from the
+upstream file with:
+- Tile image references pointed at the PNGs that actually get installed to
+  `bin/visualelements` — the build generates `70-Asstio-w10startmenu.png` and
+  `150-Asstio-w10startmenu.png` from `Asstio-w10startmenu.svg`
+  (`generate_sized_png_from_svg` → `${size}-${name}.png`, GLOB'd by
+  `*-Asstio-w10startmenu*` at CMakeLists.txt:587). Upstream's manifest pointed
+  at a static `Nextcloud-w10starttile.png` that the install glob does not
+  actually ship; using the generated names makes the tile images resolve.
+- `BackgroundColor="#6D3EFF"` (Asstio brand purple) for the Start-menu tile.
