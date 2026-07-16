@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Asstio Windows Start-menu tile.
+
+  Upstream convention (Nextcloud-w10startmenu.svg): a full-color square tile —
+  a filled circle/disc background nearly spanning the viewBox, with the white
+  variant of the logo mark composited on top, occupying most of the disc.
+
+  Background: solid brand purple #6D3EFF (see branding/BRAND.md / NEXTCLOUD.cmake
+  NEXTCLOUD_BACKGROUND_COLOR), matching the wizard-header background used
+  elsewhere so the same white mark reads correctly here too.
+  Foreground: the Asstio white mark path, copied verbatim from
+  branding/asstio-logo-white.svg (viewBox 0 0 200 200 — reused as-is here so
+  the circle and path share one coordinate space).
+-->
+<svg width="100%" height="100%" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="100" cy="100" r="100" fill="#6D3EFF" id="asstio-w10startmenu-bg" />
+    <path
+       id="path-asstio-startmenu-mark"
+       d="m100.11 40c-11.223 0-21.367 2.8065-30.432 7.9863-9.0647 5.1799-16.187 12.517-21.367 21.582-5.1799 9.0647-7.7695 19.209-7.7695 30.432s2.3748 21.584 7.123 30.648c4.7482 9.0648 11.438 16.185 19.855 21.365 8.6331 5.3957 17.914 7.9863 28.273 7.9863h53.311c2.8058 0 5.1796-1.079 7.3379-3.0215 1.9424-1.9424 3.0215-4.3163 3.0215-7.3379v-49.64c0-11.007-2.8065-21.367-7.9863-30.432-5.1798-9.0647-12.302-16.402-21.367-21.582-9.0647-5.1798-18.993-7.9863-30-7.9863zm0 19.424c7.1223 0 13.598 1.9433 19.426 5.3965 5.8273 3.4532 10.359 8.4178 13.812 14.461 3.2374 6.259 4.9629 13.165 4.9629 20.719 0 7.7698-1.7255 14.676-4.9629 20.719-3.4532 6.0432-7.9852 11.008-13.812 14.461-5.8273 3.4532-12.304 5.1797-19.426 5.1797-7.3381 0-13.813-1.7265-19.641-5.1797-5.8273-3.4532-10.359-8.4178-13.812-14.461-3.4532-6.0431-4.9629-12.949-4.9629-20.719 0-7.5539 1.5096-14.46 4.9629-20.719 3.4532-6.0432 7.9852-11.008 13.812-14.461 5.8273-3.4532 12.302-5.3965 19.641-5.3965z"
+       fill="#ffffff" />
+</svg>
