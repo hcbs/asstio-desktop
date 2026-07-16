@@ -1,35 +1,35 @@
-# SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
+# SPDX-FileCopyrightText: 2026 Asstio AB
 # SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Self-contained Asstio macOS build workflow. Adapted from upstream's
+# macos-craft-ci.yml + macos-build-and-test.yml, inlined into one workflow:
+#   - single CRAFT_TARGET (macos-clang-arm64), no File Provider matrix
+#   - no ctest/coverage/PR-comment steps (M1 builds; tests run upstream)
+#   - collects the built .app into an artifact instead of stopping at build
 
-name: macOS CI
+name: Asstio macOS Build
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
 
 jobs:
-  setup_craft:
-    name: Set up Craft and install dependencies
-    if: github.repository == 'nextcloud/desktop'
-    timeout-minutes: 60
+  build:
+    name: Build Asstio Desktop (macOS arm64)
+    timeout-minutes: 350
     runs-on: macos-15
     env:
       CRAFT_TARGET: macos-clang-arm64
       CRAFT_MASTER_LOCATION: ${{ github.workspace }}/CraftMaster
       CRAFT_MASTER_CONFIG: ${{ github.workspace }}/craftmaster.ini
-      PYTHON_VERSION: 3.12
-    outputs:
-      # workaround for `env` not being usable from within `jobs.:id.with`: republish those variables as outputs
-      CRAFT_TARGET: ${{ env.CRAFT_TARGET }}
-      CRAFT_MASTER_LOCATION: ${{ env.CRAFT_MASTER_LOCATION }}
-      CRAFT_MASTER_CONFIG: ${{ env.CRAFT_MASTER_CONFIG }}
-      PYTHON_VERSION: ${{ env.PYTHON_VERSION }}
+      PYTHON_VERSION: "3.12"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 1
 
-      - name: Discover cached Craft directories
+      - name: Restore cached Craft directories
         id: cache-craft-restore
         uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
@@ -38,24 +38,16 @@ jobs:
             ${{ github.workspace }}/craft-clone
             ${{ github.workspace }}/${{ env.CRAFT_TARGET }}
           key: ${{ runner.os }}-craft-${{ hashFiles(env.CRAFT_MASTER_CONFIG) }}
-          lookup-only: true
-
-      - name: List Xcode installations
-        if: steps.cache-craft-restore.outputs.cache-hit != 'true'
-        run: sudo ls -1 /Applications | grep "Xcode"
 
       - name: Select Xcode 16.3
-        if: steps.cache-craft-restore.outputs.cache-hit != 'true'
         run: sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer
 
       - name: Set up Python ${{ env.PYTHON_VERSION }}
-        if: steps.cache-craft-restore.outputs.cache-hit != 'true'
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Homebrew dependencies
-        if: steps.cache-craft-restore.outputs.cache-hit != 'true'
         run: |
           brew install homebrew/cask/inkscape
 
@@ -90,19 +82,24 @@ jobs:
             ${{ github.workspace }}/${{ env.CRAFT_TARGET }}
           key: ${{ runner.os }}-craft-${{ hashFiles(env.CRAFT_MASTER_CONFIG) }}
 
+      - name: Build nextcloud-client
+        run: |
+          python "${{ env.CRAFT_MASTER_LOCATION }}/CraftMaster.py" --config "${{ env.CRAFT_MASTER_CONFIG }}" --target ${{ env.CRAFT_TARGET }} -c --options nextcloud-client.srcDir=${{ github.workspace }} --options nextcloud-client.buildFileProviderModule=False nextcloud-client
 
-  build:
-    name: Build and test ${{ matrix.buildFileProviderModule == 'True' && 'File Provider' || 'classic' }} client
-    if: github.repository == 'nextcloud/desktop'
-    needs: setup_craft
-    strategy:
-      fail-fast: false
-      matrix:
-        buildFileProviderModule: ["True", "False"]
-    uses: ./.github/workflows/macos-build-and-test.yml
-    with:
-      CRAFT_TARGET: ${{ needs.setup_craft.outputs.CRAFT_TARGET }}
-      CRAFT_MASTER_CONFIG: ${{ needs.setup_craft.outputs.CRAFT_MASTER_CONFIG }}
-      CRAFT_MASTER_LOCATION: ${{ needs.setup_craft.outputs.CRAFT_MASTER_LOCATION }}
-      PYTHON_VERSION: ${{ needs.setup_craft.outputs.PYTHON_VERSION }}
-      buildFileProviderModule: ${{ matrix.buildFileProviderModule }}
+      - name: Collect app bundle
+        run: |
+          set -e
+          APP=$(find "${{ github.workspace }}/${{ env.CRAFT_TARGET }}" "$HOME" -maxdepth 8 -iname "*.app" -type d 2>/dev/null | grep -iE "asstio|nextcloud" | head -1)
+          if [ -z "$APP" ]; then
+            echo "No .app bundle found under craft target or home dirs" >&2
+            find "${{ github.workspace }}/${{ env.CRAFT_TARGET }}" -maxdepth 8 -iname "*.app" 2>/dev/null || true
+            exit 1
+          fi
+          echo "Found: $APP"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" Asstio-macos-arm64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Asstio-macos-arm64
+          path: Asstio-macos-arm64.zip
+          retention-days: 14
