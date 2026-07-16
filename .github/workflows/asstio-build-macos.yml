@@ -89,13 +89,23 @@ jobs:
       - name: Collect app bundle
         run: |
           set -e
-          APP=$(find "${{ github.workspace }}/${{ env.CRAFT_TARGET }}" "$HOME" -maxdepth 8 -iname "*.app" -type d 2>/dev/null | grep -iE "asstio|nextcloud" | head -1)
+          TARGET_DIR="${{ github.workspace }}/${{ env.CRAFT_TARGET }}"
+          echo "All .app bundles under craft target:"
+          find "$TARGET_DIR" -maxdepth 12 -type d -iname "*.app" 2>/dev/null || true
+          # Match on the bundle NAME (a path match hits unrelated bundles like
+          # Python's IDLE.app because the workspace path contains "asstio").
+          APP=$(find "$TARGET_DIR" -maxdepth 12 -type d \( -iname "asstio*.app" -o -iname "nextcloud*.app" \) 2>/dev/null | head -1)
           if [ -z "$APP" ]; then
-            echo "No .app bundle found under craft target or home dirs" >&2
-            find "${{ github.workspace }}/${{ env.CRAFT_TARGET }}" -maxdepth 8 -iname "*.app" 2>/dev/null || true
+            echo "No Asstio/Nextcloud .app bundle found under $TARGET_DIR" >&2
             exit 1
           fi
           echo "Found: $APP"
+          SIZE_MB=$(du -sm "$APP" | cut -f1)
+          echo "Bundle size: ${SIZE_MB} MB"
+          if [ "$SIZE_MB" -lt 50 ]; then
+            echo "Bundle suspiciously small (<50 MB) — refusing to upload" >&2
+            exit 1
+          fi
           ditto -c -k --sequesterRsrc --keepParent "$APP" Asstio-macos-arm64.zip
 
       - uses: actions/upload-artifact@v4
