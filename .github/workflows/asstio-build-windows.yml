@@ -1,0 +1,174 @@
+# SPDX-FileCopyrightText: 2026 Asstio AB
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Self-contained Asstio Windows build workflow. Adapted from upstream's
+# windows-build-and-test.yml, inlined and adjusted:
+#   - no OpenCppCoverage/ctest/PR-comment steps (M1 builds; tests run upstream)
+#   - adds a Craft cache (restore/save) around the one-time setup steps,
+#     mirroring asstio-build-macos.yml
+#   - adds a Craft NSIS packaging step and collects the installer .exe into
+#     an artifact instead of stopping at compile
+
+name: Asstio Windows Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Build Asstio Desktop (Windows x64)
+    timeout-minutes: 350
+    runs-on: windows-2022
+    env:
+      CRAFT_TARGET: windows-msvc2022_64-cl
+      CRAFT_MASTER_LOCATION: ${{ github.workspace }}\CraftMaster
+      CRAFT_MASTER_CONFIG: ${{ github.workspace }}\craftmaster.ini
+      PYTHON_VERSION: "3.12"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+
+      - name: Restore cached Craft directories
+        id: cache-craft-restore
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ${{ env.CRAFT_MASTER_LOCATION }}
+            ${{ github.workspace }}\craft-clone
+            ${{ github.workspace }}\${{ env.CRAFT_TARGET }}
+          key: ${{ runner.os }}-craft-${{ hashFiles(env.CRAFT_MASTER_CONFIG) }}
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install inkscape
+        shell: pwsh
+        run: |
+          choco install inkscape
+
+      - name: Download Craft
+        if: steps.cache-craft-restore.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          git clone -q --depth=1 https://invent.kde.org/packaging/craftmaster.git "${{ env.CRAFT_MASTER_LOCATION }}"
+
+      - name: Add required blueprint repositories
+        if: steps.cache-craft-restore.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          function craft() {
+              python "${{ env.CRAFT_MASTER_LOCATION }}\CraftMaster.py" --config "${{ env.CRAFT_MASTER_CONFIG }}" --target ${{ env.CRAFT_TARGET }} -c $args
+              if($LASTEXITCODE -ne 0) {exit $LASTEXITCODE}
+          }
+
+          craft --add-blueprint-repository "https://github.com/nextcloud/craft-blueprints-kde.git|stable-33.0|"
+          craft --add-blueprint-repository "https://github.com/nextcloud/desktop-client-blueprints.git|stable-33.0|"
+
+      - name: Setup Craft
+        if: steps.cache-craft-restore.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          function craft() {
+              python "${{ env.CRAFT_MASTER_LOCATION }}\CraftMaster.py" --config "${{ env.CRAFT_MASTER_CONFIG }}" --target ${{ env.CRAFT_TARGET }} -c $args
+              if($LASTEXITCODE -ne 0) {exit $LASTEXITCODE}
+          }
+
+          craft craft
+
+      - name: Install Craft Nextcloud client dependencies
+        if: steps.cache-craft-restore.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          function craft() {
+              python "${{ env.CRAFT_MASTER_LOCATION }}\CraftMaster.py" --config "${{ env.CRAFT_MASTER_CONFIG }}" --target ${{ env.CRAFT_TARGET }} -c $args
+              if($LASTEXITCODE -ne 0) {exit $LASTEXITCODE}
+          }
+
+          craft --install-deps nextcloud-client
+
+      - name: Cache Craft directories
+        if: steps.cache-craft-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ${{ env.CRAFT_MASTER_LOCATION }}
+            ${{ github.workspace }}\craft-clone
+            ${{ github.workspace }}\${{ env.CRAFT_TARGET }}
+          key: ${{ runner.os }}-craft-${{ hashFiles(env.CRAFT_MASTER_CONFIG) }}
+
+      - name: Setup PATH
+        shell: pwsh
+        run: |
+          echo "${{ github.workspace }}\${{ env.CRAFT_TARGET }}\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Compile
+        shell: pwsh
+        run: |
+          function craft() {
+              python "${{ env.CRAFT_MASTER_LOCATION }}\CraftMaster.py" --config "${{ env.CRAFT_MASTER_CONFIG }}" --target ${{ env.CRAFT_TARGET }} -c $args
+              if($LASTEXITCODE -ne 0) {exit $LASTEXITCODE}
+          }
+
+          craft --src-dir "${{ github.workspace }}" nextcloud-client
+
+      - name: Craft package (NSIS)
+        shell: pwsh
+        run: |
+          function craft() {
+              python "${{ env.CRAFT_MASTER_LOCATION }}\CraftMaster.py" --config "${{ env.CRAFT_MASTER_CONFIG }}" --target ${{ env.CRAFT_TARGET }} -c $args
+              if($LASTEXITCODE -ne 0) {exit $LASTEXITCODE}
+          }
+
+          craft --package nextcloud-client
+
+      - name: Collect installer
+        shell: pwsh
+        run: |
+          $searchRoots = @(
+            "${{ github.workspace }}\${{ env.CRAFT_TARGET }}",
+            "$env:USERPROFILE\craft",
+            "C:\craft"
+          ) | Where-Object { Test-Path $_ }
+
+          Write-Host "Searching for installer .exe under: $($searchRoots -join ', ')"
+          $candidates = Get-ChildItem -Recurse -Path $searchRoots -Include *.exe -ErrorAction SilentlyContinue
+          Write-Host "All .exe candidates found:"
+          $candidates | ForEach-Object { "{0}  ({1:N1} MB)" -f $_.FullName, ($_.Length / 1MB) } | Write-Host
+
+          # Match on the installer NAME containing "asstio" (never just the
+          # first *.exe — a path match or bare glob can grab an unrelated
+          # tool binary that happens to live under the same tree) AND a
+          # size sanity check (a real NSIS installer bundling Qt + OpenSSL
+          # is tens of MB; anything under 50 MB is not it).
+          $exe = $candidates |
+                 Where-Object { $_.Name -match '(?i)asstio' -and $_.Length -gt 50MB } |
+                 Select-Object -First 1
+
+          if (-not $exe) {
+            Write-Host "No Asstio installer >50MB found; falling back to name match without size filter" -ForegroundColor Yellow
+            $exe = $candidates | Where-Object { $_.Name -match '(?i)asstio.*(setup|install)' } | Select-Object -First 1
+          }
+
+          if (-not $exe) {
+            Write-Error "No Asstio installer .exe found under any search root"
+            exit 1
+          }
+
+          $sizeMb = [Math]::Round($exe.Length / 1MB, 1)
+          Write-Host "Found: $($exe.FullName) (${sizeMb} MB)"
+          if ($exe.Length -lt 50MB) {
+            Write-Error "Installer suspiciously small (<50 MB) - refusing to upload"
+            exit 1
+          }
+
+          Copy-Item $exe.FullName "${{ github.workspace }}\Asstio-windows-x64-setup.exe"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Asstio-windows-x64
+          path: Asstio-windows-x64-setup.exe
+          retention-days: 14
